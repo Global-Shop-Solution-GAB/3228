@@ -1,0 +1,195 @@
+Program.Sub.ScreenSU.Start
+gui.SS_Form1..create
+gui.SS_Form1..caption("HR&P Timeclock Export")
+gui.SS_Form1..size(4135,2525)
+gui.SS_Form1..position(0,0)
+gui.SS_Form1..alwaysontop(False)
+gui.SS_Form1..fontname("Arial")
+gui.SS_Form1..fontsize(8)
+gui.SS_Form1..forecolor(0)
+gui.SS_Form1..fontstyle(,,,,)
+gui.SS_Form1..BackColor(-2147483633)
+gui.SS_Form1..controlbox(True)
+gui.SS_Form1..maxbutton(False)
+gui.SS_Form1..minbutton(False)
+gui.SS_Form1..mousepointer(0)
+gui.SS_Form1..moveable(True)
+gui.SS_Form1..sizeable(False)
+gui.SS_Form1..ShowInTaskBar(True)
+gui.SS_Form1..titlebar(True)
+gui.SS_Form1..event(unload,unload)
+gui.SS_Form1.lbl_txtClient.create(label,"Client No",True,1800,200,1,100,135,True,0,Arial,8,-2147483633,0)
+gui.SS_Form1.txtClient.create(textbox,"",True,1800,330,1,100,335,True,0,Arial,8,16777215,1)
+gui.SS_Form1.lbl_dtpFrom.create(label,"Beginning Date",True,1800,200,1,100,835,True,0,Arial,8,-2147483633,0)
+gui.SS_Form1.dtpFrom.create(datepicker)
+gui.SS_Form1.dtpFrom.visible(True)
+gui.SS_Form1.dtpFrom.size(1800,345)
+gui.SS_Form1.dtpFrom.position(100,1035)
+gui.SS_Form1.dtpFrom.enabled(True)
+gui.SS_Form1.dtpFrom.fontname("Arial")
+gui.SS_Form1.lbl_dtpThru.create(label,"Ending Date",True,1800,200,1,1985,835,True,0,Arial,8,-2147483633,0)
+gui.SS_Form1.dtpThru.create(datepicker)
+gui.SS_Form1.dtpThru.visible(True)
+gui.SS_Form1.dtpThru.size(1800,345)
+gui.SS_Form1.dtpThru.position(1985,1035)
+gui.SS_Form1.dtpThru.enabled(True)
+gui.SS_Form1.dtpThru.fontname("Arial")
+gui.SS_Form1.cmdOk.create(button)
+gui.SS_Form1.cmdOk.Caption("Ok")
+gui.SS_Form1.cmdOk.visible(True)
+gui.SS_Form1.cmdOk.size(1000,360)
+gui.SS_Form1.cmdOk.position(100,1550)
+gui.SS_Form1.cmdOk.enabled(True)
+gui.SS_Form1.cmdOk.fontname("Arial")
+gui.SS_Form1.cmdOk.fontsize(8)
+gui.SS_Form1.cmdOk.event(click,cmdok_click)
+gui.SS_Form1.txtClient.tabstop(true)
+gui.SS_Form1.txtClient.tabindex(1)
+gui.SS_Form1.dtpFrom.tabstop(true)
+gui.SS_Form1.dtpFrom.tabindex(2)
+gui.SS_Form1.dtpThru.tabstop(true)
+gui.SS_Form1.dtpThru.tabindex(3)
+gui.SS_Form1.cmdOk.tabstop(true)
+gui.SS_Form1.cmdOk.tabindex(4)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.Global.DSN.Declare(String)
+Variable.UDT.PayRec.Define("Client",String)
+Variable.UDT.PayRec.Define("Employee",String,Empl)
+Variable.UDT.PayRec.Define("SSN",String)
+Variable.UDT.PayRec.Define("OTHrs",Float)
+Variable.UDT.PayRec.Define("RegHrs",Float)
+Variable.UDT.PayRec.Define("OthHrs",Float)
+Variable.UDT.PayRec.Define("EC",String)
+Variable.UDT.PayRec.Define("Hours",Float,Hours_Worked)
+Variable.UDT.PayRec.Define("Workcenter",String)
+Variable.UDT.PayRec.Define("Type",String)
+Variable.uGlobal.uPayRec.Declare("PayRec")
+
+Variable.UDT.EmpRec.Define("Employee",String,Employee)
+Variable.UDT.EmpRec.Define("SSN",String,Social_Security_No)
+Variable.uGlobal.uEmpRec.Declare("EmpRec")
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Summit Payroll export for Watson Grinding
+'JCT -- 10-21-2011
+'new menu item
+
+F.ODBC.Connection!Con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+	Gui.SS_Form1..Show
+
+
+
+
+Program.Sub.Main.End
+
+Program.Sub.unload.Start
+
+f.ODBC.Connection!Con.Close
+Function.Intrinsic.Control.End
+
+Program.Sub.unload.End
+
+program.sub.cmdok_click.start
+
+Gui.SS_Form1.cmdOk.Enabled(false)
+
+V.local.squery.declare(String)
+V.local.sdate.declare(String)
+'V.local.sfilename.declare(String)
+V.Local.stime.Declare(String)
+V.Local.iFor.Declare(Long)
+V.Local.iForEc.Declare(Long)
+V.Local.iPosArray.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sFileData.Declare(String)
+V.Local.sFileString.Declare(String)
+V.Local.sFileLoc.Declare(String)
+V.Local.fHours.Declare(Float)
+V.Local.sRegHours.Declare(String)
+V.Local.sOThours.Declare(String)
+
+
+V.uGlobal.uPayRec.Redim(-1,-1)
+F.Intrinsic.String.Concat("select Empl,sum(Hours_Worked) as Hours_Worked from V_Job_Detail where Balanced_As_Date between'",V.Screen.SS_Form1!dtpFrom.Value.pervasivedate,"' and '",V.Screen.SS_Form1!dtpThru.Value.pervasivedate,"' group by Empl",V.Local.squery)
+F.ODBC.Connection!Con.OpenRecordsetRO("rstPay",V.Local.squery)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstPay.EOF,=,False)
+		F.Intrinsic.Variable.LoadUDTFromRecordset("Con","rstPay","V.uGlobal.uPayRec",False,0)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstPay.Close
+
+F.Intrinsic.Control.If(V.uGlobal.uPayRec!Employee.UBound,=,-1)
+	F.Intrinsic.UI.Msgbox("No records found in selected rage.")
+	Gui.SS_Form1.cmdOk.Enabled(True)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+
+'get employee/SSN's
+V.uGlobal.uEmpRec.Redim(-1,-1)
+F.Intrinsic.String.Concat("select Employee,Social_Security_No from EMPLOYEE_MSTR order by employee","",Variable.Local.squery)
+F.ODBC.Connection!Con.OpenRecordsetRO("rstEM",Variable.Local.squery)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstEM.EOF,=,False)
+		F.Intrinsic.Variable.LoadUDTFromRecordset("con","rstEM","v.uGlobal.uEmpRec",False,0)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstEM.Close
+
+
+'write ssn to payrec
+F.Intrinsic.Control.For(V.Local.iFor,V.uGlobal.uEmpRec!Employee.LBound,V.uGlobal.uEmpRec!Employee.UBound,1)
+	Function.Intrinsic.Variable.UDTMultiSeekSet(v.uGlobal.uPayRec!Employee,v.uGlobal.uEmpRec(v.Local.iFor)!Employee,v.uGlobal.uPayRec!SSN,v.uGlobal.uEmpRec(v.Local.iFor)!SSN)
+F.Intrinsic.Control.Next(V.Local.iFor)
+
+'write client number  to udt
+Function.Intrinsic.Variable.UDTSetMemberValue(v.uGlobal.uPayRec!Client,v.Screen.SS_Form1!txtClient.Text)
+
+
+'set length array
+V.Local.iPosArray.Set("4,5,9,8,8,8,76")
+F.Intrinsic.String.Split(V.Local.iPosArray,",",V.Local.iPosArray)
+
+'write records in employee number order, reg, ot, other
+F.Intrinsic.Control.For(V.Local.iFor,V.uGlobal.uPayRec!Employee.LBound,V.uGlobal.uPayRec!Employee.UBound,1)
+'for each pay record
+'see if hours is greater than 40, if so, add OT record
+	F.Intrinsic.Math.Sub(40,V.uGlobal.uPayRec(v.Local.iFor)!Hours,V.Local.fHours)
+		F.Intrinsic.Control.If(V.Local.fHours,<,0)
+			V.uGlobal.uPayRec(v.Local.iFor)!Hours.Set(40)
+			F.Intrinsic.Math.mult(V.Local.fHours,-1,V.Local.fHours)
+			V.uGlobal.uPayRec(v.Local.iFor)!OTHrs.Set(V.Local.fHours)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Format(V.uGlobal.uPayRec(v.Local.iFor)!Hours,"0.00",V.Local.sRegHours)
+	F.Intrinsic.String.Format(V.uGlobal.uPayRec(v.Local.iFor)!OTHrs,"0.00",V.Local.sOThours)
+
+	F.Intrinsic.String.Concat(V.Screen.SS_Form1!txtClient.Text,"*!*",V.uGlobal.uPayRec(V.Local.iFor)!Employee,"*!*",V.uGlobal.uPayRec(V.Local.iFor)!SSN,V.Local.sFileData)
+	F.Intrinsic.String.Concat(V.Local.sFileData,"*!*",V.Local.sRegHours,"*!**!*",V.Local.sOThours,"*!*",V.Local.sFileData)
+
+	F.Intrinsic.String.Split(V.Local.sFileData,"*!*",V.Local.sFileData)
+	F.Intrinsic.String.PositionalString(V.Local.sFileData,V.Local.iPosArray,V.Local.sFileData)
+	F.Intrinsic.String.Concat(V.Local.sFileString,V.Local.sFileData,V.Ambient.NewLine,V.Local.sFileString)
+
+F.Intrinsic.Control.Next(V.Local.iFor)
+F.Intrinsic.String.Format(V.Ambient.Date,"yyyymmdd",V.Local.sdate)
+F.Intrinsic.String.Concat(V.Caller.FilesDir,"\HRPexport_",V.Local.sdate,".csv",V.Local.sFileLoc)
+F.Intrinsic.File.String2File(V.Local.sFileLoc,V.Local.sFileString)
+
+F.Intrinsic.Control.CallSub(Unload)
+
+
+program.sub.cmdok_click.end
+
+Program.Sub.ScreenSS.Start
+SS_Form1{{CAPTION::HR&P Timeclock Export
+SS_Form1.CTRL{{NAME::txtClient\\TYPE::2\\CAPTION::Client No\\TABSTOP::1\\GROUP::1\\BROWSER::0\\SIZE::1
+SS_Form1.CTRL{{NAME::dtpFrom\\TYPE::6\\CAPTION::Beginning Date\\TABSTOP::2\\GROUP::2\\BROWSER::0\\SIZE::1
+SS_Form1.CTRL{{NAME::dtpThru\\TYPE::6\\CAPTION::Ending Date\\TABSTOP::3\\GROUP::2\\BROWSER::0\\SIZE::1
+SS_Form1.CTRL{{NAME::cmdOk\\TYPE::5\\CAPTION::Ok\\TABSTOP::4\\GROUP::-1\\BROWSER::0\\SIZE::1
+
+Program.Sub.ScreenSS.End
+
